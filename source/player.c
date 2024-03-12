@@ -1,7 +1,7 @@
 #include "player.h"
 #include "raylib.h"
 #include "main.h"
-#include "my3dlib.h"
+#include "mymath.h"
 
 void PLAYER_InitPlayer(PLAYER_Player* player, Vector3 pos, float maxSpeed, float maxAngularSpeed)
 {

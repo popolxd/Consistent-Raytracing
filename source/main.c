@@ -1,6 +1,5 @@
 #include "main.h"
 #include "raylib.h"
-#include "my3dlib.h"
 #include "player.h"
 #include "level.h"
 #include <stdio.h>
@@ -27,7 +26,7 @@ int main(void)
 
     LEVEL_InitLevel1(&level1, &player);
 
-    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Test!");
+    InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "Consistent Raytracing!");
 
     SetTargetFPS(60);
 

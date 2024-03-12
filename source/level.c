@@ -1,6 +1,7 @@
 #include "level.h"
 #include "player.h"
-#include "my3dlib.h"
+#include "mymath.h"
+#include "collisions.h"
 #include "main.h"
 #include <stdlib.h>
 #include <math.h>
@@ -17,7 +18,7 @@ void LEVEL_InitLevel1(LEVEL_Level* level, PLAYER_Player* player)
     level->objects[0].ambientColor = (Vector3){0.3, 0.3, 0.8};
     level->objects[0].specularColor = (Vector3){0.3, 0.3, 0.8};
     level->objects[0].shininess = 4;
-    level->objects[0].mirrorValue = 0.4;
+    level->objects[0].mirrorValue = 1; // recommended to be 0 or 1
 
     level->objects[1].shape.plane = (LEVEL_Plane){(Vector3){0, 1, 0}, (Vector3){0, -1, 0}};
     level->objects[1].type = PLANE;
@@ -33,14 +34,14 @@ void LEVEL_InitLevel1(LEVEL_Level* level, PLAYER_Player* player)
     level->dirLightsIntensities = (float*)malloc(sizeof(float)*level->dirLightsLen);
 
     level->dirLights[0] = MY3DLIB_MATH_GetNormalizedVec((Vector3){1, 1, 1});
-    level->dirLightsIntensities[0] = 0;
+    level->dirLightsIntensities[0] = 0.25;
 
     // point light sources
     level->pointLightsLen = 1;
     level->pointLights = (Vector3*)malloc(sizeof(Vector3)*level->pointLightsLen);
     level->pointLightsIntensities = (float*)malloc(sizeof(float)*level->pointLightsLen);
 
-    level->pointLights[0] = (Vector3){0, -5, 0};
+    level->pointLights[0] = (Vector3){0, -5, 8};
     level->pointLightsIntensities[0] = 10;
 
     level->ambientLightIntensity = 0.2;
@@ -97,7 +98,15 @@ Vector3 LEVEL_ReturnPixel(LEVEL_Level* level, PLAYER_Player* player, Vector3 ray
         LEVEL_GetCollisionInfo(level, currentRayOrigin, currentRayDir, &collisionInfo);
 
         if (collisionInfo.finalCollisionDist != INFINITY) {
-            collisionPoint = MY3DLIB_MATH_GetAddedVec(currentRayOrigin, MY3DLIB_MATH_GetMultipliedVec(currentRayDir, collisionInfo.finalCollisionDist-EPSILON));
+            collisionPoint = MY3DLIB_MATH_GetAddedVec(currentRayOrigin, MY3DLIB_MATH_GetMultipliedVec(currentRayDir, collisionInfo.finalCollisionDist));
+            MY3DLIB_MATH_AddToVec(&collisionPoint, MY3DLIB_MATH_GetMultipliedVec(collisionInfo.finalNormal, EPSILON));
+
+            if (collisionInfo.mirrorValue == 1) {
+                currentRayOrigin = collisionPoint;
+                currentRayDir = MY3DLIB_MATH_GetReflectedVecAlongNormal(currentRayDir, collisionInfo.finalNormal);
+                contribution *= collisionInfo.mirrorValue;
+                continue;
+            }
 
             // directional light source
             for (int i = 0; i < level->dirLightsLen; i++) { 
@@ -131,7 +140,6 @@ Vector3 LEVEL_ReturnPixel(LEVEL_Level* level, PLAYER_Player* player, Vector3 ray
                     )); // diffuse light
 
                     specularDotProd = MY3DLIB_MATH_DotProd(MY3DLIB_MATH_GetReflectedVecAlongNormal(currentPointLightDir, collisionInfo.finalNormal), MY3DLIB_MATH_GetMultipliedVec(rayDir, -1)); // specular light
-                    
                     MY3DLIB_MATH_AddToVec(&finalColorOfPixel, MY3DLIB_MATH_GetMultipliedVec(
                         collisionInfo.finalSpecularColor, currentPointLightIntensity*pow(max(specularDotProd, 0), collisionInfo.finalShininess)*(1 - collisionInfo.mirrorValue)*contribution
                     )); // specular light
@@ -167,13 +175,13 @@ void LEVEL_GetCollisionInfo(LEVEL_Level* level, Vector3 rayOrigin, Vector3 rayDi
     for (int i = 0; i < level->objectsLen; i++) {
         switch (level->objects[i].type) {
             case SPHERE:
-                collisionDist = MY3DLIB_COLLISIONS_RaySphereIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.sphere.pos, level->objects[i].shape.sphere.radius, &normal);
+                collisionDist = COLLISIONS3D_RaySphereIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.sphere.pos, level->objects[i].shape.sphere.radius, &normal);
                 break;
             case PLANE:
-                collisionDist = MY3DLIB_COLLISIONS_RayPlaneIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.plane.point, level->objects[i].shape.plane.normal, &normal);
+                collisionDist = COLLISIONS3D_RayPlaneIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.plane.point, level->objects[i].shape.plane.normal, &normal);
                 break;
             case DISK:
-                collisionDist = MY3DLIB_COLLISIONS_RayDiskIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.disk.pos, level->objects[i].shape.disk.normal, level->objects[i].shape.disk.radius, &normal);
+                collisionDist = COLLISIONS3D_RayDiskIntersectionEx(rayOrigin, rayDir, level->objects[i].shape.disk.pos, level->objects[i].shape.disk.normal, level->objects[i].shape.disk.radius, &normal);
                 break;
         }
 
@@ -195,13 +203,13 @@ int LEVEL_IsCollision(LEVEL_Level* level, Vector3 rayOrigin, Vector3 rayDir)
     for (int i = 0; i < level->objectsLen; i++) {
         switch (level->objects[i].type) {
             case SPHERE:
-                collisionDist = MY3DLIB_COLLISIONS_RaySphereIntersection(rayOrigin, rayDir, level->objects[i].shape.sphere.pos, level->objects[i].shape.sphere.radius);
+                collisionDist = COLLISIONS3D_RaySphereIntersection(rayOrigin, rayDir, level->objects[i].shape.sphere.pos, level->objects[i].shape.sphere.radius);
                 break;
             case PLANE:
-                collisionDist = MY3DLIB_COLLISIONS_RayPlaneIntersection(rayOrigin, rayDir, level->objects[i].shape.plane.point, level->objects[i].shape.plane.normal);
+                collisionDist = COLLISIONS3D_RayPlaneIntersection(rayOrigin, rayDir, level->objects[i].shape.plane.point, level->objects[i].shape.plane.normal);
                 break;
             case DISK:
-                collisionDist = MY3DLIB_COLLISIONS_RayDiskIntersection(rayOrigin, rayDir, level->objects[i].shape.disk.pos, level->objects[i].shape.disk.normal, level->objects[i].shape.disk.radius);
+                collisionDist = COLLISIONS3D_RayDiskIntersection(rayOrigin, rayDir, level->objects[i].shape.disk.pos, level->objects[i].shape.disk.normal, level->objects[i].shape.disk.radius);
                 break;
         }
 

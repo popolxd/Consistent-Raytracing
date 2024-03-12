@@ -7,7 +7,7 @@ CFILES := $(wildcard $(SRCDIR)/*.c)
 LINUX_CC = gcc
 LINUX_OBJDIR = ./objects/linux
 LINUX_OFILES = $(patsubst $(SRCDIR)/%.c, $(LINUX_OBJDIR)/%.o, $(CFILES))
-LINUX_RAYFLAGS = -lraylib -lm
+LINUX_RAYFLAGS = -lraylib -lm -L./libs -lcollisions3D
 
 OFLAGS = -O0
 CFLAGS = -Wall -g -I$(SRCDIR) $(OFLAGS) 
